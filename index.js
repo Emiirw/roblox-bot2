@@ -56,5 +56,3 @@ app.get("/", (req, res) => {
 app.listen(3000, () => {
   console.log("Web server çalışıyor");
 });
-
-d1cb4811f4e113308176b304a322e5f66fc47045
