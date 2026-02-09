@@ -71,13 +71,13 @@ client.on("messageCreate", async (message) => {
     }
 
     if (!username || !rankInput) {
-        return message.reply("❌ **Kullanım:** `!rdegis @Etiket OF-2` veya `!rdegis RobloxIsmi OF-2`.");
+        return message.reply("❌ **Örnek Kullanım:** `!rdegis @Etiket OF-2` veya `!rdegis RobloxIsmi OF-2`.");
     }
 
     const targetRankId = rankMap[rankInput];
 
     if (!targetRankId) {
-        return message.reply(`❌ **Geçersiz Rütbe Kodu!**`);
+        return message.reply(`❌ **Geçersiz Rütbe!**`);
     }
 
     try {
@@ -117,7 +117,7 @@ client.on("messageCreate", async (message) => {
         message.reply(`✅ **${username}** adlı kullanıcının rütbesi başarıyla **${rankInput}** olarak değiştirildi.`);
     } catch (err) {
         console.error(err);
-        message.reply("⚠️ Bir hata oluştu! Kullanıcı adını kontrol edin eğer yine olmuyorsa bot yetkisinde sorun vardır.");
+        message.reply("⚠️ Bir hata oluştu! Kullanıcı adını kontrol edin eğer yine olmuyorsa yetkimle alakalı bir sorun vardır.");
     }
 });
 
