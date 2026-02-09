@@ -167,26 +167,42 @@ client.on("interactionCreate", async (interaction) => {
             await interaction.editReply(`✅ **${rbxName}** rütbesi **${newRank}** olarak güncellendi.`);
         }
 
-        // --- SORGU KOMUTU ---
-        if (commandName === 'sorgu') {
-            const playerInfo = await noblox.getPlayerInfo(userId);
-            const groups = await noblox.getGroups(userId);
+  // HIZLANDIRILMIŞ VE KİLİTLENMEYEN SORGU
+    if (commandName === 'sorgu') {
+        try {
+            // 1. Kullanıcıyı bulurken hata payını sıfırlayalım
+            const userId = await noblox.getIdFromUsername(rbxName).catch(() => null);
+            if (!userId) return await interaction.editReply(`❌ **${rbxName}** bulunamadı.`);
+
+            // 2. Verileri PARALEL çekelim (Hız kazandırır)
+            // Biri biterken diğerini beklemez, ikisini aynı anda ister.
+            const [playerInfo, groups] = await Promise.all([
+                noblox.getPlayerInfo(userId).catch(() => null),
+                noblox.getGroups(userId).catch(() => [])
+            ]).catch(() => [null, []]);
+
+            if(!playerInfo) return await interaction.editReply("❌ Roblox verileri çekilemedi.");
+
             const sicil = sicilVerisi[userId] || [];
+            
             const embed = new EmbedBuilder()
                 .setTitle(`👤 ${rbxName} Analizi`)
                 .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
                 .addFields(
-                    { name: 'Grup Rütbesi', value: currentRankName, inline: true },
+                    { name: 'Hesap ID', value: `${userId}`, inline: true },
                     { name: 'Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / (1000*60*60*24))} Gün`, inline: true },
-                    { name: 'Sicil Durumu', value: sicil.length > 0 ? `⚠️ ${sicil.length} Kayıt` : "✅ Temiz" }
-                ).setColor("Random");
-            await interaction.editReply({ embeds: [embed] });
-        }
+                    { name: 'Sicil', value: sicil.length > 0 ? `⚠️ ${sicil.length} Kayıt` : "✅ Temiz", inline: true },
+                    { name: '🏢 Gruplar (İlk 5)', value: groups.slice(0, 5).map(g => `• ${g.Name}`).join('\n') || 'Grup yok' }
+                )
+                .setColor("Blue");
 
-    } catch (e) {
-        console.log(e);
-        await interaction.editReply("❌ İşlem başarısız. Kullanıcı adı hatalı olabilir veya yetki yetersiz.");
-    }
-});
+            // MUTLAKA editReply kullanmalıyız
+            await interaction.editReply({ embeds: [embed] });
+
+        } catch (e) {
+            console.error("Sorgu Hatası:", e);
+            await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
+        }
+    });
 
 client.login(process.env.DISCORD_TOKEN);
