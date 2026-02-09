@@ -40,7 +40,7 @@ client.on("messageCreate", async (message) => {
     const userId = await noblox.getIdFromUsername(username);
     await noblox.setRank(process.env.GROUP_ID, userId, rankId);
 
-    message.reply(`${username} başarıyla terfi edildi.`);
+    message.reply(`${username} adlı kullanıcının rütbesi başarılıyla değiştirildi.`);
   } catch (err) {
     console.log(err);
     message.reply("Hata oluştu.");
