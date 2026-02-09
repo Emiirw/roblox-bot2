@@ -21,6 +21,7 @@ function sicilKaydet() {
     fs.writeFileSync("./siciller.json", JSON.stringify(sicilVerisi, null, 2));
 }
 
+// GÜNCELLENMİŞ RÜTBE LİSTESİ
 const rankMap = {
     "OR-1 Er": 1, "OR-2 Onbaşı": 2, "OR-3 Çavuş": 3, "OR-4 Uzman Çavuş": 4, "OR-5 Asb. Çavuş": 5, "OR-6 Asb. Üstçavuş": 6, "OR-7 Asb. Kıdemli Üstçavuş": 7, "OR-8 Asb. Başçavuş": 8, "OR-9 Asb. Kıdemli Başçavuş": 9,
     "OF-1 Teğmen": 10, "OF-2 Yüzbaşı": 11, "OF-3 Binbaşı": 12, "OF-4 Yarbay": 13, "OF-5 Albay": 14, "OF-6 Tuğgeneral": 15, "OF-7 Tümgeneral": 16, "OF-8 Korgeneral": 17, "OF-9 Orgeneral": 18,
@@ -33,9 +34,14 @@ const client = new Client({
 
 client.once("ready", async () => {
   console.log("Discord bot aktif!");
-  await noblox.setCookie(process.env.ROBLOX_COOKIE).catch(e => console.log("Cookie Hatası"));
+  await noblox.setCookie(process.env.ROBLOX_COOKIE).catch(e => console.log("Cookie Hatası: Cookie geçersiz veya süresi dolmuş."));
 
   const commands = [
+    {
+        name: 'sicil',
+        description: 'Personelin ID, hesap yaşı ve sicil kayıtlarını gösterir',
+        options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }]
+    },
     {
         name: 'rdegis',
         description: 'Rütbe değiştirir',
@@ -56,7 +62,7 @@ client.once("ready", async () => {
     },
     {
         name: 'sicil_duzenle',
-        description: 'Sicil paneli açar',
+        description: 'Sicil ekleme/silme paneli açar',
         options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }]
     },
     {
@@ -77,24 +83,6 @@ client.on("interactionCreate", async (interaction) => {
         return await interaction.respond(filtered.map(choice => ({ name: choice, value: choice })));
     }
 
-    // BUTON / MODAL / MENU
+    // BUTON VE MODAL İŞLEMLERİ
     if (!interaction.isChatInputCommand()) {
-        if (interaction.isButton()) {
-            const [action, targetName] = interaction.customId.split('_');
-            if (action === 'ekle') {
-                const modal = new ModalBuilder().setCustomId(`modal_${targetName}`).setTitle(`Sicil: ${targetName}`);
-                const tip = new TextInputBuilder().setCustomId('tip').setLabel("UYARI / CEZA").setStyle(TextInputStyle.Short).setRequired(true);
-                const sebep = new TextInputBuilder().setCustomId('sebep').setLabel("Detay").setStyle(TextInputStyle.Paragraph).setRequired(true);
-                modal.addComponents(new ActionRowBuilder().addComponents(tip), new ActionRowBuilder().addComponents(sebep));
-                return await interaction.showModal(modal);
-            }
-            if (action === 'sil') {
-                const userId = await noblox.getIdFromUsername(targetName).catch(() => null);
-                if (!userId || !sicilVerisi[userId] || sicilVerisi[userId].length === 0) return interaction.reply({ content: "Kayıt bulunamadı.", ephemeral: true });
-                const menu = new StringSelectMenuBuilder().setCustomId(`silmenu_${userId}`).setPlaceholder('Kayıt seçin');
-                sicilVerisi[userId].forEach((s, i) => menu.addOptions({ label: `${i+1}. ${s.tip}`, value: `${i}` }));
-                return await interaction.reply({ components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
-            }
-        }
-        if (interaction.isModalSubmit()) {
-            const target = interaction.customId.split('_')
+        if (interaction.isButton())
