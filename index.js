@@ -203,6 +203,6 @@ client.on("interactionCreate", async (interaction) => {
             console.error("Sorgu Hatası:", e);
             await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
         }
-    };
+    );
 
 client.login(process.env.DISCORD_TOKEN);
