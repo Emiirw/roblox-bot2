@@ -66,6 +66,7 @@ client.on("interactionCreate", async (interaction) => {
     
     // 1. /sorgu Komutu (Gruplar, Hesap Yaşı, Sicil)
     if (interaction.isChatInputCommand() && interaction.commandName === 'sorgu') {
+        await interaction.editReply()
         const targetRaw = interaction.options.getString('kullanici');
         let rbxName = targetRaw.replace(/[<@!>]/g, '');
 
