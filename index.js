@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const express = require("express");
@@ -60,6 +60,4 @@ app.listen(3000, () => {
   console.log("Web server çalışıyor");
 });
 
-=======
-
->>>>>>> d1cb4811f4e113308176b304a322e5f66fc47045
+d1cb4811f4e113308176b304a322e5f66fc47045
