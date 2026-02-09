@@ -199,10 +199,13 @@ client.on("interactionCreate", async (interaction) => {
             // MUTLAKA editReply kullanmalıyız
             await interaction.editReply({ embeds: [embed] });
 
-        } catch (e) {
+  } catch (e) {
             console.error("Sorgu Hatası:", e);
-            await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
+            if (interaction.deferred) {
+                await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
+            }
         }
-    );
+    }
+});
 
 client.login(process.env.DISCORD_TOKEN);
