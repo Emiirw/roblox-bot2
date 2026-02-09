@@ -60,11 +60,45 @@ client.on("messageCreate", async (message) => {
     if (!message.member.permissions.has("Administrator")) return;
 
     const args = message.content.split(" ");
+    const mention = message.mentions.members.first(); 
+    let username = args[1];
+    const rankInput = args[2]?.toUpperCase();
+
+   
+    if (mention) {
+        
+        username = mention.nickname || mention.user.username;
+    }
+
+    if (!username || !rankInput) {
+        return message.reply("❌ **Kullanım:** `!rdegis @Etiket OF-2` veya `!rdegis RobloxIsmi OF-2`.");
+    }
+
+    const targetRankId = rankMap[rankInput];
+
+    if (!targetRankId) {
+        return message.reply(`❌ **Geçersiz Rütbe Kodu!**`);
+    }
+
+    try {
+       
+        const userId = await noblox.getIdFromUsername(username);
+        
+        await noblox.setRank(parseInt(process.env.GROUP_ID), userId, targetRankId);
+
+        message.reply(`✅ **${username}** adlı kullanıcının rütbesi başarıyla **${rankInput}** yapıldı.`);
+    } catch (err) {
+        console.error(err);
+        message.reply(`⚠️ **Hata:** "${username}" adında bir Roblox kullanıcısı bulunamadı veya yetkim yetmedi.`);
+    }
+});
+
+    const args = message.content.split(" ");
     const username = args[1];
     const rankInput = args[2]?.toUpperCase(); 
 
     if (!username || !rankInput) {
-        return message.reply("❌ **Kullanım:** `!rdegis kullanıcıadı OF-2` (veya OR-1 vb.)");
+        return message.reply("❌ **Kullanım:** `!rdegis kullanıcıadı rütbe` (veya OR-1 vb.)");
     }
 
     
@@ -80,7 +114,7 @@ client.on("messageCreate", async (message) => {
         // Rütbeyi değiştir
         await noblox.setRank(parseInt(process.env.GROUP_ID), userId, targetRankId);
 
-        message.reply(`✅ **${username}** adlı kullanıcının rütbesi başarıyla **${rankInput}** (ID: ${targetRankId}) olarak değiştirildi.`);
+        message.reply(`✅ **${username}** adlı kullanıcının rütbesi başarıyla **${rankInput}** olarak değiştirildi.`);
     } catch (err) {
         console.error(err);
         message.reply("⚠️ Bir hata oluştu! Kullanıcı adını kontrol edin eğer yine olmuyorsa bot yetkisinde sorun vardır.");
