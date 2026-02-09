@@ -118,4 +118,51 @@ client.on("interactionCreate", async (interaction) => {
 
         // --- SİCİL KOMUTU ---
         if (commandName === 'sicil') {
-            const playerInfo = await noblox.getPlayerInfo(userId).catch(() => ({ joinDate
+            const playerInfo = await noblox.getPlayerInfo(userId).catch(() => ({ joinDate: new Date() }));
+            const sicil = sicilVerisi[userId] || [];
+            const embed = new EmbedBuilder()
+                .setTitle(`📜 Personel Sicil Dosyası: ${rbxName}`)
+                .setColor("DarkRed")
+                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
+                .addFields(
+                    { name: '🆔 Roblox ID', value: `\`${userId}\``, inline: true },
+                    { name: '📅 Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / 86400000)} Gün`, inline: true },
+                    { name: '⚠️ Ceza/Uyarı Dökümü', value: sicil.map((s, i) => `**${i+1}.** [${s.tarih}] **${s.tip}:** ${s.sebep}`).join('\n') || 'Temiz.' }
+                );
+            return await interaction.editReply({ embeds: [embed] });
+        }
+
+        // --- SİCİL DÜZENLEME PANELİ ---
+        if (commandName === 'sicil_duzenle') {
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId(`ekle_${rbxName}`).setLabel('Kayıt Ekle').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId(`sil_${rbxName}`).setLabel('Kayıt Sil').setStyle(ButtonStyle.Secondary)
+            );
+            return interaction.editReply({ content: `🛠️ **${rbxName}** için sicil paneli açıldı:`, components: [row] });
+        }
+
+        // --- RÜTBE İŞLEMLERİ ---
+        const currentRankName = await noblox.getRankNameInGroup(GROUP_ID, userId);
+        const rankNames = Object.keys(rankMap);
+        const currentIndex = rankNames.indexOf(currentRankName);
+
+        if (commandName === 'terfi') {
+            if (currentIndex === -1 || currentIndex >= rankNames.length - 1) return interaction.editReply("İşlem başarısız.");
+            const nextRank = rankNames[currentIndex + 1];
+            await noblox.setRank(GROUP_ID, userId, rankMap[nextRank]);
+            return await interaction.editReply(`🎖️ **${rbxName}** terfi etti: **${nextRank}**`);
+        }
+
+        if (commandName === 'rdegis') {
+            const newRank = options.getString('rutbe');
+            await noblox.setRank(GROUP_ID, userId, rankMap[newRank]);
+            return await interaction.editReply(`✅ **${rbxName}** rütbesi **${newRank}** yapıldı.`);
+        }
+
+    } catch (e) {
+        console.error(e);
+        await interaction.editReply("❌ Bir hata oluştu.");
+    }
+});
+
+client.login(process.env.DISCORD_TOKEN);
