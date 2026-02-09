@@ -21,7 +21,6 @@ function sicilKaydet() {
     fs.writeFileSync("./siciller.json", JSON.stringify(sicilVerisi, null, 2));
 }
 
-// Rütbe Listesi (Sıralama Önemli: En düşükten en yükseğe)
 const rankMap = {
     "OR-1": 1, "OR-2": 2, "OR-3": 3, "OR-4": 4, "OR-5": 5, "OR-6": 6, "OR-7": 7, "OR-8": 8, "OR-9": 9,
     "OF-1": 10, "OF-2": 11, "OF-3": 12, "OF-4": 13, "OF-5": 14, "OF-6": 15, "OF-7": 16, "OF-8": 17, "OF-9": 18,
@@ -71,24 +70,17 @@ client.once("ready", async () => {
 
 client.on("interactionCreate", async (interaction) => {
     
-// OTO TAMAMLAMA (Rütbe Listesi)
+    // 1. OTO TAMAMLAMA
     if (interaction.isAutocomplete() && interaction.commandName === 'rdegis') {
         const focusedValue = interaction.options.getFocused() || "";
         const choices = Object.keys(rankMap);
-        
-        // Kullanıcı bir şey yazmasa bile ilk 25 rütbeyi gösterir
-        const filtered = choices.filter(choice => 
-            choice.toLowerCase().includes(focusedValue.toLowerCase())
-        ).slice(0, 25);
-
-        // Hata almamak için mutlaka bir dizi döndürmeli
-        await interaction.respond(
-            filtered.map(choice => ({ name: choice, value: choice }))
-        ).catch(e => console.log("Autocomplete Hatası:", e));
+        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
+        await interaction.respond(filtered.map(choice => ({ name: choice, value: choice }))).catch(() => null);
+        return;
     }
 
+    // 2. BUTON VE MODAL İŞLEMLERİ
     if (!interaction.isChatInputCommand()) {
-        // BUTON VE MODAL İŞLEMLERİ (Önceki kodlarınla aynı kalsın)
         if (interaction.isButton()) {
             const [action, targetName] = interaction.customId.split('_');
             if (action === 'ekle') {
@@ -109,7 +101,7 @@ client.on("interactionCreate", async (interaction) => {
         }
         if (interaction.isModalSubmit()) {
             const target = interaction.customId.split('_')[1];
-            const userId = await noblox.getIdFromUsername(target);
+            const userId = await noblox.getIdFromUsername(target).catch(() => null);
             if (!sicilVerisi[userId]) sicilVerisi[userId] = [];
             sicilVerisi[userId].push({ tip: interaction.fields.getTextInputValue('tip'), sebep: interaction.fields.getTextInputValue('sebep'), tarih: new Date().toLocaleDateString('tr-TR') });
             sicilKaydet();
@@ -124,6 +116,7 @@ client.on("interactionCreate", async (interaction) => {
         return;
     }
 
+    // 3. SLASH KOMUTLARI
     const { commandName, options } = interaction;
     await interaction.deferReply();
 
@@ -135,56 +128,19 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     try {
-        const userId = await noblox.getIdFromUsername(rbxName);
-        const currentRankName = await noblox.getRankNameInGroup(parseInt(process.env.GROUP_ID), userId);
-        const rankNames = Object.keys(rankMap);
-        const currentIndex = rankNames.indexOf(currentRankName);
+        const userId = await noblox.getIdFromUsername(rbxName).catch(() => null);
+        if (!userId) return await interaction.editReply(`❌ **${rbxName}** bulunamadı.`);
 
-        // --- TERFİ KOMUTU ---
-        if (commandName === 'terfi') {
-            if (currentIndex === -1 || currentIndex === rankNames.length - 1) 
-                return interaction.editReply("❌ Bu personel zaten en üst rütbede veya grup rütbesi listede yok.");
-            
-            const nextRank = rankNames[currentIndex + 1];
-            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[nextRank]);
-            await interaction.editReply(`🎖️ **${rbxName}** terfi ettirildi! \n**Eski Rütbe:** ${currentRankName} \n**Yeni Rütbe:** ${nextRank}`);
-        }
-
-        // --- TENZİL KOMUTU ---
-        if (commandName === 'tenzil') {
-            if (currentIndex <= 0) 
-                return interaction.editReply("❌ Bu personel zaten en alt rütbede veya grup rütbesi listede yok.");
-            
-            const prevRank = rankNames[currentIndex - 1];
-            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[prevRank]);
-            await interaction.editReply(`📉 **${rbxName}** rütbesi düşürüldü! \n**Eski Rütbe:** ${currentRankName} \n**Yeni Rütbe:** ${prevRank}`);
-        }
-
-        // --- RDEGIS KOMUTU ---
-        if (commandName === 'rdegis') {
-            const newRank = options.getString('rutbe');
-            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[newRank]);
-            await interaction.editReply(`✅ **${rbxName}** rütbesi **${newRank}** olarak güncellendi.`);
-        }
-
-  // HIZLANDIRILMIŞ VE KİLİTLENMEYEN SORGU
-    if (commandName === 'sorgu') {
-        try {
-            // 1. Kullanıcıyı bulurken hata payını sıfırlayalım
-            const userId = await noblox.getIdFromUsername(rbxName).catch(() => null);
-            if (!userId) return await interaction.editReply(`❌ **${rbxName}** bulunamadı.`);
-
-            // 2. Verileri PARALEL çekelim (Hız kazandırır)
-            // Biri biterken diğerini beklemez, ikisini aynı anda ister.
+        // --- SORGU KOMUTU ---
+        if (commandName === 'sorgu') {
             const [playerInfo, groups] = await Promise.all([
                 noblox.getPlayerInfo(userId).catch(() => null),
                 noblox.getGroups(userId).catch(() => [])
-            ]).catch(() => [null, []]);
+            ]);
 
             if(!playerInfo) return await interaction.editReply("❌ Roblox verileri çekilemedi.");
 
             const sicil = sicilVerisi[userId] || [];
-            
             const embed = new EmbedBuilder()
                 .setTitle(`👤 ${rbxName} Analizi`)
                 .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
@@ -196,15 +152,42 @@ client.on("interactionCreate", async (interaction) => {
                 )
                 .setColor("Blue");
 
-            // MUTLAKA editReply kullanmalıyız
-            await interaction.editReply({ embeds: [embed] });
-
-  } catch (e) {
-            console.error("Sorgu Hatası:", e);
-            if (interaction.deferred) {
-                await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
-            }
+            return await interaction.editReply({ embeds: [embed] });
         }
+
+        // RÜTBE HESAPLAMALARI
+        const currentRankName = await noblox.getRankNameInGroup(parseInt(process.env.GROUP_ID), userId);
+        const rankNames = Object.keys(rankMap);
+        const currentIndex = rankNames.indexOf(currentRankName);
+
+        // --- TERFİ ---
+        if (commandName === 'terfi') {
+            if (currentIndex === -1 || currentIndex === rankNames.length - 1) 
+                return interaction.editReply("❌ Bu personel zaten en üst rütbede veya listede yok.");
+            const nextRank = rankNames[currentIndex + 1];
+            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[nextRank]);
+            return await interaction.editReply(`🎖️ **${rbxName}** terfi ettirildi! \n**Yeni Rütbe:** ${nextRank}`);
+        }
+
+        // --- TENZİL ---
+        if (commandName === 'tenzil') {
+            if (currentIndex <= 0) 
+                return interaction.editReply("❌ Bu personel zaten en alt rütbede.");
+            const prevRank = rankNames[currentIndex - 1];
+            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[prevRank]);
+            return await interaction.editReply(`📉 **${rbxName}** rütbesi düşürüldü! \n**Yeni Rütbe:** ${prevRank}`);
+        }
+
+        // --- RDEGIS ---
+        if (commandName === 'rdegis') {
+            const newRank = options.getString('rutbe');
+            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[newRank]);
+            return await interaction.editReply(`✅ **${rbxName}** rütbesi **${newRank}** olarak güncellendi.`);
+        }
+
+    } catch (e) {
+        console.error("Hata:", e);
+        if (interaction.deferred) await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
     }
 });
 
