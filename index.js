@@ -31,8 +31,8 @@ function sicilKaydet() {
 
 const rankMap = {
     "OR-1": 1, "OR-2": 2, "OR-3": 3, "OR-4": 4, "OR-5": 5, "OR-6": 6, "OR-7": 7, "OR-8": 8, "OR-9": 9,
-    "OF-1": 10, "OF-2": 11, "OF-3": 12, "OF-4": 13, "OF-5": 14, "OF-6": 15, "OF-7": 16, "OF-8": 17, "OF-9": 18
-    "Büyük Konsey": 19, "Ankara Heyeti": 20, "Yönetim Kurulu": 21, "Başkumandan": 22, "Askeri Kurultay": 23, "Üst Yönetim Kurulu": 24,
+    "OF-1": 10, "OF-2": 11, "OF-3": 12, "OF-4": 13, "OF-5": 14, "OF-6": 15, "OF-7": 16, "OF-8": 17, "OF-9": 18,
+    "Büyük Konsey": 19, "Ankara Heyeti": 20, "Yönetim Kurulu": 21, "Başkumandan": 22, "Askeri Kurultay": 23, "Üst Yönetim Kurulu": 24
 };
 
 const client = new Client({
