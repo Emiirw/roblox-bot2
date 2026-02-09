@@ -33,37 +33,15 @@ const rankMap = {
 };
 
 client.once("ready", async () => {
-  console.log("Bot tenzil komutu olmadan aktif!");
+  console.log("Bot aktif! Tenzil komutu kaldırıldı.");
   await noblox.setCookie(process.env.ROBLOX_COOKIE).catch(() => console.log("Cookie Hatası!"));
 
   const commands = [
-    {
-        name: 'sicil',
-        description: 'Personelin ID, hesap yaşı ve sicil kayıtlarını gösterir',
-        options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }]
-    },
-    {
-        name: 'rdegis',
-        description: 'Rütbe değiştirir',
-        options: [
-            { name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true },
-            { name: 'rutbe', type: 3, description: 'Yeni rütbe', required: true, autocomplete: true }
-        ]
-    },
-    {
-        name: 'terfi',
-        description: 'Üst rütbeye yükseltir',
-        options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }]
-    },
-    {
-        name: 'sicil_duzenle',
-        description: 'Sicil ekleme/silme paneli açar',
-        options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }]
-    },
-    {
-        name: 'reset',
-        description: 'Botu yeniden başlatır'
-    }
+    { name: 'sicil', description: 'Personel bilgilerini gösterir', options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }] },
+    { name: 'rdegis', description: 'Rütbe değiştirir', options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }, { name: 'rutbe', type: 3, description: 'Rütbe', required: true, autocomplete: true }] },
+    { name: 'terfi', description: 'Üst rütbeye yükseltir', options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }] },
+    { name: 'sicil_duzenle', description: 'Sicil paneli açar', options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }] },
+    { name: 'reset', description: 'Botu yeniden başlatır' }
   ];
   await client.application.commands.set(commands);
 });
@@ -81,7 +59,7 @@ client.on("interactionCreate", async (interaction) => {
             const [action, targetName] = interaction.customId.split('_');
             if (action === 'ekle') {
                 const modal = new ModalBuilder().setCustomId(`modal_${targetName}`).setTitle(`Sicil: ${targetName}`);
-                const tip = new TextInputBuilder().setCustomId('tip').setLabel("UYARI mi CEZA mi?").setStyle(TextInputStyle.Short).setRequired(true);
+                const tip = new TextInputBuilder().setCustomId('tip').setLabel("Tip (UYARI/CEZA)").setStyle(TextInputStyle.Short).setRequired(true);
                 const sebep = new TextInputBuilder().setCustomId('sebep').setLabel("Detaylar").setStyle(TextInputStyle.Paragraph).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(tip), new ActionRowBuilder().addComponents(sebep));
                 return await interaction.showModal(modal);
@@ -138,13 +116,13 @@ client.on("interactionCreate", async (interaction) => {
             const playerInfo = await noblox.getPlayerInfo(userId).catch(() => ({ joinDate: new Date() }));
             const sicil = sicilVerisi[userId] || [];
             const embed = new EmbedBuilder()
-                .setTitle(`📜 Personel Sicil Dosyası: ${rbxName}`)
+                .setTitle(`📜 Personel Dosyası: ${rbxName}`)
                 .setColor("DarkRed")
                 .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
                 .addFields(
                     { name: '🆔 Roblox ID', value: `\`${userId}\``, inline: true },
-                    { name: '📅 Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / (1000*60*60*24))} Gün`, inline: true },
-                    { name: '⚠️ Ceza/Uyarı Dökümü', value: sicil.map((s, i) => `**${i+1}.** [${s.tarih}] **${s.tip}:** ${s.sebep}`).join('\n') || 'Temiz.' }
+                    { name: '📅 Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / 86400000)} Gün`, inline: true },
+                    { name: '⚠️ Sicil', value: sicil.map((s, i) => `**${i+1}.** [${s.tarih}] **${s.tip}:** ${s.sebep}`).join('\n') || 'Temiz' }
                 );
             return await interaction.editReply({ embeds: [embed] });
         }
