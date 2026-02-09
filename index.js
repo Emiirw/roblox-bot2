@@ -71,12 +71,20 @@ client.once("ready", async () => {
 
 client.on("interactionCreate", async (interaction) => {
     
-    // OTO TAMAMLAMA (Rütbe Listesi)
+// OTO TAMAMLAMA (Rütbe Listesi)
     if (interaction.isAutocomplete() && interaction.commandName === 'rdegis') {
-        const focusedValue = interaction.options.getFocused().toLowerCase();
+        const focusedValue = interaction.options.getFocused() || "";
         const choices = Object.keys(rankMap);
-        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue)).slice(0, 25);
-        await interaction.respond(filtered.map(choice => ({ name: choice, value: choice })));
+        
+        // Kullanıcı bir şey yazmasa bile ilk 25 rütbeyi gösterir
+        const filtered = choices.filter(choice => 
+            choice.toLowerCase().includes(focusedValue.toLowerCase())
+        ).slice(0, 25);
+
+        // Hata almamak için mutlaka bir dizi döndürmeli
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice, value: choice }))
+        ).catch(e => console.log("Autocomplete Hatası:", e));
     }
 
     if (!interaction.isChatInputCommand()) {
