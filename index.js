@@ -113,7 +113,7 @@ client.on("interactionCreate", async (interaction) => {
 
         const GROUP_ID = parseInt(process.env.GROUP_ID);
 
-        // --- SORGU KOMUTU ---
+       // --- SORGU KOMUTU ---
         if (commandName === 'sorgu') {
             const [playerInfo, groups, rankName] = await Promise.all([
                 noblox.getPlayerInfo(userId).catch(() => ({ joinDate: new Date() })),
@@ -122,19 +122,28 @@ client.on("interactionCreate", async (interaction) => {
             ]);
 
             const sicil = sicilVerisi[userId] || [];
+            
+            // Grupları metin haline getiriyoruz
+            const grupListesi = groups.length > 0 
+                ? groups.slice(0, 5).map(g => `• **${g.Name}** (${g.Role})`).join('\n') 
+                : "Grup bulunamadı veya gizli.";
+
             const embed = new EmbedBuilder()
                 .setTitle(`👤 Personel Dosyası: ${rbxName}`)
-                .addFields(
-                    { name: 'Mevcut Rütbe', value: rankName, inline: true },
-                    { name: 'Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / (1000*60*60*24))} Gün`, inline: true },
-                    { name: 'Sicil', value: sicil.map((s, i) => `• ${s.tip}: ${s.sebep}`).join('\n') || 'Temiz' }
-                )
                 .setColor("Blue")
-                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`);
+                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
+                .addFields(
+                    { name: '🆔 Roblox ID', value: `\`${userId}\``, inline: true },
+                    { name: '📅 Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / (1000*60*60*24))} Gün`, inline: true },
+                    { name: '🎖️ Mevcut Rütbe', value: `**${rankName}**`, inline: false },
+                    { name: '📜 Sicil Kaydı', value: sicil.map((s, i) => `**${i+1}.** ${s.tip}: ${s.sebep}`).join('\n') || 'Temiz', inline: false },
+                    { name: '🏢 Üye Olduğu Gruplar (İlk 5)', value: grupListesi, inline: false }
+                )
+                .setFooter({ text: 'Sorgulama Başarılı', iconURL: interaction.user.displayAvatarURL() })
+                .setTimestamp();
             
             return await interaction.editReply({ embeds: [embed] });
         }
-
         // --- RÜTBE KOMUTLARI (Terfi, Tenzil, Rdegis) ---
         const currentRankName = await noblox.getRankNameInGroup(GROUP_ID, userId);
         const rankNames = Object.keys(rankMap);
