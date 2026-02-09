@@ -21,6 +21,7 @@ function sicilKaydet() {
     fs.writeFileSync("./siciller.json", JSON.stringify(sicilVerisi, null, 2));
 }
 
+// Rütbe Map (İsim: Roblox_Rank_ID)
 const rankMap = {
     "OR-1": 1, "OR-2": 2, "OR-3": 3, "OR-4": 4, "OR-5": 5, "OR-6": 6, "OR-7": 7, "OR-8": 8, "OR-9": 9,
     "OF-1": 10, "OF-2": 11, "OF-3": 12, "OF-4": 13, "OF-5": 14, "OF-6": 15, "OF-7": 16, "OF-8": 17, "OF-9": 18,
@@ -33,92 +34,71 @@ const client = new Client({
 
 client.once("ready", async () => {
   console.log("Discord bot aktif!");
-  await noblox.setCookie(process.env.ROBLOX_COOKIE).catch(e => console.log("Cookie Hatası"));
+  try {
+      await noblox.setCookie(process.env.ROBLOX_COOKIE);
+      console.log("Roblox girişi başarılı!");
+  } catch (e) {
+      console.error("COOKIE HATASI: Lütfen .env dosyasını kontrol et!");
+  }
 
   const commands = [
-    {
-        name: 'sorgu',
-        description: 'Personel analizi ve sicil dökümü yapar',
-        options: [{ name: 'kullanici', type: 3, description: 'Roblox adı veya Etiket', required: true }]
-    },
-    {
-        name: 'rdegis',
-        description: 'Personelin rütbesini değiştirir',
-        options: [
-            { name: 'kullanici', type: 3, description: 'Roblox adı veya Etiket', required: true },
-            { name: 'rutbe', type: 3, description: 'Yeni rütbeyi seçin', required: true, autocomplete: true }
-        ]
-    },
-    {
-        name: 'terfi',
-        description: 'Personeli bir üst rütbeye yükseltir',
-        options: [{ name: 'kullanici', type: 3, description: 'Roblox adı veya Etiket', required: true }]
-    },
-    {
-        name: 'tenzil',
-        description: 'Personeli bir alt rütbeye düşürür',
-        options: [{ name: 'kullanici', type: 3, description: 'Roblox adı veya Etiket', required: true }]
-    },
-    {
-        name: 'sicil_duzenle',
-        description: 'Personel için sicil paneli açar',
-        options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }]
-    }
+    { name: 'sorgu', description: 'Personel analizi yapar', options: [{ name: 'kullanici', type: 3, description: 'Roblox adı veya Etiket', required: true }] },
+    { name: 'rdegis', description: 'Rütbe değiştirir', options: [{ name: 'kullanici', type: 3, description: 'Ad/Etiket', required: true }, { name: 'rutbe', type: 3, description: 'Rütbe seçin', required: true, autocomplete: true }] },
+    { name: 'terfi', description: 'Üst rütbeye atar', options: [{ name: 'kullanici', type: 3, description: 'Ad/Etiket', required: true }] },
+    { name: 'tenzil', description: 'Alt rütbeye düşürür', options: [{ name: 'kullanici', type: 3, description: 'Ad/Etiket', required: true }] },
+    { name: 'sicil_duzenle', description: 'Sicil paneli', options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }] }
   ];
   await client.application.commands.set(commands);
 });
 
 client.on("interactionCreate", async (interaction) => {
-    
     // 1. OTO TAMAMLAMA
-    if (interaction.isAutocomplete() && interaction.commandName === 'rdegis') {
-        const focusedValue = interaction.options.getFocused() || "";
+    if (interaction.isAutocomplete()) {
+        const focusedValue = interaction.options.getFocused().toLowerCase();
         const choices = Object.keys(rankMap);
-        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
-        await interaction.respond(filtered.map(choice => ({ name: choice, value: choice }))).catch(() => null);
-        return;
+        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue)).slice(0, 25);
+        return await interaction.respond(filtered.map(choice => ({ name: choice, value: choice })));
     }
 
-    // 2. BUTON VE MODAL İŞLEMLERİ
+    // 2. BUTON / MODAL / MENU
     if (!interaction.isChatInputCommand()) {
         if (interaction.isButton()) {
             const [action, targetName] = interaction.customId.split('_');
             if (action === 'ekle') {
                 const modal = new ModalBuilder().setCustomId(`modal_${targetName}`).setTitle(`Sicil: ${targetName}`);
-                const tip = new TextInputBuilder().setCustomId('tip').setLabel("UYARI mı CEZA mı?").setStyle(TextInputStyle.Short).setRequired(true);
-                const sebep = new TextInputBuilder().setCustomId('sebep').setLabel("Detaylar").setStyle(TextInputStyle.Paragraph).setRequired(true);
+                const tip = new TextInputBuilder().setCustomId('tip').setLabel("Tip").setStyle(TextInputStyle.Short).setRequired(true);
+                const sebep = new TextInputBuilder().setCustomId('sebep').setLabel("Detay").setStyle(TextInputStyle.Paragraph).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(tip), new ActionRowBuilder().addComponents(sebep));
-                await interaction.showModal(modal);
+                return await interaction.showModal(modal);
             }
             if (action === 'sil') {
                 const userId = await noblox.getIdFromUsername(targetName).catch(() => null);
-                const list = sicilVerisi[userId] || [];
-                if (list.length === 0) return interaction.reply({ content: "Silinecek kayıt yok.", ephemeral: true });
-                const menu = new StringSelectMenuBuilder().setCustomId(`silmenu_${userId}`).setPlaceholder('Kayıt seçin');
-                list.forEach((s, i) => menu.addOptions({ label: `${i+1}. ${s.tip}`, description: s.tarih, value: `${i}` }));
-                await interaction.reply({ content: "Kayıt seç:", components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+                if (!userId || !sicilVerisi[userId]) return interaction.reply({ content: "Kayıt yok.", ephemeral: true });
+                const menu = new StringSelectMenuBuilder().setCustomId(`silmenu_${userId}`).setPlaceholder('Seç');
+                sicilVerisi[userId].forEach((s, i) => menu.addOptions({ label: `${i+1}. ${s.tip}`, value: `${i}` }));
+                return await interaction.reply({ components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             }
         }
         if (interaction.isModalSubmit()) {
             const target = interaction.customId.split('_')[1];
-            const userId = await noblox.getIdFromUsername(target).catch(() => null);
+            const userId = await noblox.getIdFromUsername(target);
             if (!sicilVerisi[userId]) sicilVerisi[userId] = [];
             sicilVerisi[userId].push({ tip: interaction.fields.getTextInputValue('tip'), sebep: interaction.fields.getTextInputValue('sebep'), tarih: new Date().toLocaleDateString('tr-TR') });
             sicilKaydet();
-            await interaction.reply({ content: `✅ Sicil işlendi.`, ephemeral: true });
+            return await interaction.reply({ content: `✅ İşlendi.`, ephemeral: true });
         }
         if (interaction.isStringSelectMenu() && interaction.customId.startsWith('silmenu_')) {
             const userId = interaction.customId.split('_')[1];
             sicilVerisi[userId].splice(parseInt(interaction.values[0]), 1);
             sicilKaydet();
-            await interaction.reply({ content: "🗑️ Silindi.", ephemeral: true });
+            return await interaction.reply({ content: "🗑️ Silindi.", ephemeral: true });
         }
         return;
     }
 
-    // 3. SLASH KOMUTLARI
+    // 3. SLASH KOMUTLARI (ANA GÖVDE)
     const { commandName, options } = interaction;
-    await interaction.deferReply();
+    await interaction.deferReply(); // "Düşünüyor..." başlatıldı.
 
     const targetRaw = options.getString('kullanici');
     let rbxName = targetRaw.replace(/[<@!>]/g, '');
@@ -129,65 +109,64 @@ client.on("interactionCreate", async (interaction) => {
 
     try {
         const userId = await noblox.getIdFromUsername(rbxName).catch(() => null);
-        if (!userId) return await interaction.editReply(`❌ **${rbxName}** bulunamadı.`);
+        if (!userId) return await interaction.editReply(`❌ **${rbxName}** Roblox'ta bulunamadı.`);
+
+        const GROUP_ID = parseInt(process.env.GROUP_ID);
 
         // --- SORGU KOMUTU ---
         if (commandName === 'sorgu') {
-            const [playerInfo, groups] = await Promise.all([
-                noblox.getPlayerInfo(userId).catch(() => null),
-                noblox.getGroups(userId).catch(() => [])
+            const [playerInfo, groups, rankName] = await Promise.all([
+                noblox.getPlayerInfo(userId).catch(() => ({ joinDate: new Date() })),
+                noblox.getGroups(userId).catch(() => []),
+                noblox.getRankNameInGroup(GROUP_ID, userId).catch(() => "Grupta Değil")
             ]);
-
-            if(!playerInfo) return await interaction.editReply("❌ Roblox verileri çekilemedi.");
 
             const sicil = sicilVerisi[userId] || [];
             const embed = new EmbedBuilder()
-                .setTitle(`👤 ${rbxName} Analizi`)
-                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
+                .setTitle(`👤 Personel Dosyası: ${rbxName}`)
                 .addFields(
-                    { name: 'Hesap ID', value: `${userId}`, inline: true },
+                    { name: 'Mevcut Rütbe', value: rankName, inline: true },
                     { name: 'Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / (1000*60*60*24))} Gün`, inline: true },
-                    { name: 'Sicil', value: sicil.length > 0 ? `⚠️ ${sicil.length} Kayıt` : "✅ Temiz", inline: true },
-                    { name: '🏢 Gruplar (İlk 5)', value: groups.slice(0, 5).map(g => `• ${g.Name}`).join('\n') || 'Grup yok' }
+                    { name: 'Sicil', value: sicil.map((s, i) => `• ${s.tip}: ${s.sebep}`).join('\n') || 'Temiz' }
                 )
-                .setColor("Blue");
-
+                .setColor("Blue")
+                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`);
+            
             return await interaction.editReply({ embeds: [embed] });
         }
 
-        // RÜTBE HESAPLAMALARI
-        const currentRankName = await noblox.getRankNameInGroup(parseInt(process.env.GROUP_ID), userId);
+        // --- RÜTBE KOMUTLARI (Terfi, Tenzil, Rdegis) ---
+        const currentRankName = await noblox.getRankNameInGroup(GROUP_ID, userId);
         const rankNames = Object.keys(rankMap);
         const currentIndex = rankNames.indexOf(currentRankName);
 
-        // --- TERFİ ---
         if (commandName === 'terfi') {
-            if (currentIndex === -1 || currentIndex === rankNames.length - 1) 
-                return interaction.editReply("❌ Bu personel zaten en üst rütbede veya listede yok.");
+            if (currentIndex === -1) return await interaction.editReply("❌ Kullanıcı grupta değil veya rütbesi listede tanımlı değil.");
+            if (currentIndex >= rankNames.length - 1) return await interaction.editReply("❌ Bu personel zaten en üst rütbede!");
+            
             const nextRank = rankNames[currentIndex + 1];
-            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[nextRank]);
+            await noblox.setRank(GROUP_ID, userId, rankMap[nextRank]);
             return await interaction.editReply(`🎖️ **${rbxName}** terfi ettirildi! \n**Yeni Rütbe:** ${nextRank}`);
         }
 
-        // --- TENZİL ---
         if (commandName === 'tenzil') {
-            if (currentIndex <= 0) 
-                return interaction.editReply("❌ Bu personel zaten en alt rütbede.");
+            if (currentIndex === -1) return await interaction.editReply("❌ Kullanıcı grupta değil veya rütbesi listede tanımlı değil.");
+            if (currentIndex <= 0) return await interaction.editReply("❌ Bu personel zaten en alt rütbede!");
+            
             const prevRank = rankNames[currentIndex - 1];
-            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[prevRank]);
+            await noblox.setRank(GROUP_ID, userId, rankMap[prevRank]);
             return await interaction.editReply(`📉 **${rbxName}** rütbesi düşürüldü! \n**Yeni Rütbe:** ${prevRank}`);
         }
 
-        // --- RDEGIS ---
         if (commandName === 'rdegis') {
             const newRank = options.getString('rutbe');
-            await noblox.setRank(parseInt(process.env.GROUP_ID), userId, rankMap[newRank]);
-            return await interaction.editReply(`✅ **${rbxName}** rütbesi **${newRank}** olarak güncellendi.`);
+            await noblox.setRank(GROUP_ID, userId, rankMap[newRank]);
+            return await interaction.editReply(`✅ **${rbxName}** personeli **${newRank}** yapıldı.`);
         }
 
     } catch (e) {
-        console.error("Hata:", e);
-        if (interaction.deferred) await interaction.editReply("❌ Bir şeyler ters gitti, konsolu kontrol et.");
+        console.error("KRİTİK HATA:", e);
+        return await interaction.editReply("❌ Bir hata oluştu. Roblox Cookie veya Grup Yetkisi geçersiz olabilir.");
     }
 });
 
