@@ -33,21 +33,42 @@ const rankMap = {
 };
 
 client.once("ready", async () => {
-  console.log("Bot tenzil komutu kaldırılmış şekilde aktif!");
+  console.log("Bot tenzil komutu olmadan aktif!");
   await noblox.setCookie(process.env.ROBLOX_COOKIE).catch(() => console.log("Cookie Hatası!"));
-  
+
   const commands = [
-    { name: 'sicil', description: 'ID, yaş ve kayıtları gösterir', options: [{ name: 'kullanici', type: 3, description: 'Ad/Etiket', required: true }] },
-    { name: 'rdegis', description: 'Rütbe değiştirir', options: [{ name: 'kullanici', type: 3, description: 'Ad/Etiket', required: true }, { name: 'rutbe', type: 3, description: 'Rütbe', required: true, autocomplete: true }] },
-    { name: 'terfi', description: 'Üst rütbeye yükseltir', options: [{ name: 'kullanici', type: 3, description: 'Ad/Etiket', required: true }] },
-    { name: 'sicil_duzenle', description: 'Sicil paneli açar', options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }] },
-    { name: 'reset', description: 'Botu yeniden başlatır' }
+    {
+        name: 'sicil',
+        description: 'Personelin ID, hesap yaşı ve sicil kayıtlarını gösterir',
+        options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }]
+    },
+    {
+        name: 'rdegis',
+        description: 'Rütbe değiştirir',
+        options: [
+            { name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true },
+            { name: 'rutbe', type: 3, description: 'Yeni rütbe', required: true, autocomplete: true }
+        ]
+    },
+    {
+        name: 'terfi',
+        description: 'Üst rütbeye yükseltir',
+        options: [{ name: 'kullanici', type: 3, description: 'Ad veya Etiket', required: true }]
+    },
+    {
+        name: 'sicil_duzenle',
+        description: 'Sicil ekleme/silme paneli açar',
+        options: [{ name: 'kullanici', type: 3, description: 'Roblox adı', required: true }]
+    },
+    {
+        name: 'reset',
+        description: 'Botu yeniden başlatır'
+    }
   ];
   await client.application.commands.set(commands);
 });
 
 client.on("interactionCreate", async (interaction) => {
-    // Oto Tamamlama
     if (interaction.isAutocomplete() && interaction.commandName === 'rdegis') {
         const focusedValue = interaction.options.getFocused().toLowerCase();
         const choices = Object.keys(rankMap);
@@ -55,7 +76,6 @@ client.on("interactionCreate", async (interaction) => {
         return await interaction.respond(filtered.map(choice => ({ name: choice, value: choice })));
     }
 
-    // Buton ve Modal İşlemleri
     if (!interaction.isChatInputCommand()) {
         if (interaction.isButton()) {
             const [action, targetName] = interaction.customId.split('_');
@@ -81,7 +101,7 @@ client.on("interactionCreate", async (interaction) => {
             if (!sicilVerisi[userId]) sicilVerisi[userId] = [];
             sicilVerisi[userId].push({ tip: interaction.fields.getTextInputValue('tip'), sebep: interaction.fields.getTextInputValue('sebep'), tarih: new Date().toLocaleDateString('tr-TR') });
             sicilKaydet();
-            return await interaction.reply({ content: `✅ Sicil başarıyla işlendi.`, ephemeral: true });
+            return await interaction.reply({ content: `✅ Sicil işlendi.`, ephemeral: true });
         }
         if (interaction.isStringSelectMenu() && interaction.customId.startsWith('silmenu_')) {
             const userId = interaction.customId.split('_')[1];
@@ -95,7 +115,6 @@ client.on("interactionCreate", async (interaction) => {
     const { commandName, options } = interaction;
     await interaction.deferReply();
 
-    // Reset Komutu (Senin koddaki haliyle bıraktım)
     if (commandName === 'reset') {
         if (!interaction.member.permissions.has("Administrator")) return interaction.editReply("Yetkin yok kanka.");
         await interaction.editReply("🔄 Yeniden başlatılıyor...");
@@ -103,7 +122,6 @@ client.on("interactionCreate", async (interaction) => {
         return;
     }
 
-    // Kullanıcı Adı Çevirme
     const targetRaw = options.getString('kullanici');
     let rbxName = targetRaw.replace(/[<@!>]/g, '');
     if (targetRaw.includes('<@')) {
@@ -116,7 +134,6 @@ client.on("interactionCreate", async (interaction) => {
         if (!userId) return await interaction.editReply(`❌ **${rbxName}** bulunamadı.`);
         const GROUP_ID = parseInt(process.env.GROUP_ID);
 
-        // --- SİCİL KOMUTU ---
         if (commandName === 'sicil') {
             const playerInfo = await noblox.getPlayerInfo(userId).catch(() => ({ joinDate: new Date() }));
             const sicil = sicilVerisi[userId] || [];
@@ -126,22 +143,20 @@ client.on("interactionCreate", async (interaction) => {
                 .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
                 .addFields(
                     { name: '🆔 Roblox ID', value: `\`${userId}\``, inline: true },
-                    { name: '📅 Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / 86400000)} Gün`, inline: true },
+                    { name: '📅 Hesap Yaşı', value: `${Math.floor((Date.now() - new Date(playerInfo.joinDate)) / (1000*60*60*24))} Gün`, inline: true },
                     { name: '⚠️ Ceza/Uyarı Dökümü', value: sicil.map((s, i) => `**${i+1}.** [${s.tarih}] **${s.tip}:** ${s.sebep}`).join('\n') || 'Temiz.' }
                 );
             return await interaction.editReply({ embeds: [embed] });
         }
 
-        // --- SİCİL DÜZENLEME PANELİ ---
         if (commandName === 'sicil_duzenle') {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`ekle_${rbxName}`).setLabel('Kayıt Ekle').setStyle(ButtonStyle.Danger),
                 new ButtonBuilder().setCustomId(`sil_${rbxName}`).setLabel('Kayıt Sil').setStyle(ButtonStyle.Secondary)
             );
-            return interaction.editReply({ content: `🛠️ **${rbxName}** için sicil paneli açıldı:`, components: [row] });
+            return interaction.editReply({ content: `🛠️ **${rbxName}** için sicil paneli:`, components: [row] });
         }
 
-        // --- RÜTBE İŞLEMLERİ ---
         const currentRankName = await noblox.getRankNameInGroup(GROUP_ID, userId);
         const rankNames = Object.keys(rankMap);
         const currentIndex = rankNames.indexOf(currentRankName);
@@ -158,10 +173,9 @@ client.on("interactionCreate", async (interaction) => {
             await noblox.setRank(GROUP_ID, userId, rankMap[newRank]);
             return await interaction.editReply(`✅ **${rbxName}** rütbesi **${newRank}** yapıldı.`);
         }
-
     } catch (e) {
         console.error(e);
-        await interaction.editReply("❌ Bir hata oluştu.");
+        await interaction.editReply("❌ Hata oluştu.");
     }
 });
 
